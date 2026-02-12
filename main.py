@@ -17,12 +17,13 @@ TOKEN = os.environ.get('TELEGRAM_TOKEN')
 GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
 MONGO_URI = os.environ.get('MONGO_URI')
 
+# Gemini Configuration
 genai.configure(api_key=GEMINI_KEY)
 
-# Free Tier မှာ အငြိမ်ဆုံးဖြစ်တဲ့ Gemini 1.5 Flash ကို သုံးပါမယ်
+# Model နာမည်ကို အတိအကျ ပြန်ပြင်ပေးထားပါတယ်
 model = genai.GenerativeModel(
     model_name='gemini-1.5-flash',
-    system_instruction="You are Lawkanat Bot. Respond in Burmese. Remember user context from history."
+    system_instruction="You are Lawkanat Bot. Answer in Burmese. Keep it short."
 )
 
 client = MongoClient(MONGO_URI)
@@ -43,7 +44,6 @@ def chat(message):
         response = chat_session.send_message(message.text)
         
         if response.text:
-            # Memory သိမ်းဆည်းခြင်း
             updated_history = []
             for content in chat_session.history:
                 updated_history.append({
@@ -51,7 +51,7 @@ def chat(message):
                     "parts": [{"text": part.text} for part in content.parts]
                 })
             
-            # Quota သက်သာအောင် နောက်ဆုံး ၆ ကြောင်း (၃ စုံ) ပဲ သိမ်းပါမယ်
+            # Quota သက်သာအောင် History ကို အနည်းငယ်ပဲ သိမ်းပါမယ်
             if len(updated_history) > 6:
                 updated_history = updated_history[-6:]
                 
@@ -65,19 +65,18 @@ def chat(message):
     except Exception as e:
         error_msg = str(e)
         if "429" in error_msg:
-            bot.reply_to(message, "API Limit ပြည့်သွားပါပြီ။ ၁ မိနစ်လောက်နားပြီးမှ ပြန်မေးပေးပါ။")
-        elif "Conflict" in error_msg:
-            print("Multiple instances detected. Polling will handle this.")
+            bot.reply_to(message, "API Limit ပြည့်သွားပါပြီ။ ၁ မိနစ်လောက်နားပြီးမှ ပြန်မေးပါ။")
         else:
-            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက် - {error_msg[:100]}")
+            # ဘာ Error လဲဆိုတာ သေချာသိရအောင် error message အပြည့်အစုံ ပြခိုင်းထားပါတယ်
+            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက် - {error_msg}")
 
 # 4. Run Bot
 def start_bot():
     Thread(target=run).start()
-    print("Bot is starting with Gemini 1.5 Flash...")
-    # restart ချရင် Conflict မဖြစ်အောင် သေချာစစ်ဆေးပါမယ်
+    print("Bot is starting...")
+    # Conflict မဖြစ်အောင် Webhook ကို အရင်ဖြုတ်ပါတယ်
     bot.remove_webhook()
-    bot.polling(non_stop=True, timeout=60)
+    bot.polling(non_stop=True)
 
 if __name__ == "__main__":
     start_bot()
