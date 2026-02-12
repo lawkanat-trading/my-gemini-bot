@@ -20,7 +20,7 @@ GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
 
 # Gemini Configuration (အမြန်ဆုံးဖြစ်တဲ့ 1.5-flash ကို သုံးထားပါတယ်)
 genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 # Telegram Bot Setup
 bot = telebot.TeleBot(TOKEN)
