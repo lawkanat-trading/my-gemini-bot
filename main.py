@@ -10,7 +10,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is running live with Permanent Memory (Gemini 2.5)!"
+    return "Lawkanat Bot is Online with Memory!"
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -23,8 +23,12 @@ MONGO_URI = os.environ.get('MONGO_URI')
 # Gemini AI ကို Configure လုပ်ခြင်း
 genai.configure(api_key=GEMINI_KEY)
 
-# --- ဒီနေရာမှာ ၂.၅ ကို ပြန်ပြောင်းထားပေးပါတယ် ---
-model = genai.GenerativeModel('gemini-2.5-flash')
+# Bot ကို Smart ဖြစ်စေရန် System Instruction ထည့်သွင်းခြင်း
+instruction = "You are Lawkanat Bot. Always remember the user's name and chat details from history. Speak naturally in Burmese."
+model = genai.GenerativeModel(
+    model_name='gemini-2.5-flash',
+    system_instruction=instruction
+)
 
 # MongoDB Database ချိတ်ဆက်ခြင်း
 client = MongoClient(MONGO_URI)
@@ -33,51 +37,54 @@ history_collection = db['chat_histories']
 
 bot = telebot.TeleBot(TOKEN)
 
-# 3. Message Handling (Memory စနစ်ပါဝင်သည်)
+# 3. Message Handling (ထာဝရမှတ်ဉာဏ်စနစ်)
 @bot.message_handler(func=lambda message: True)
 def chat(message):
     user_id = str(message.from_user.id)
     
-    # Database ထဲကနေ အရင်ပြောထားတဲ့ History ကို ဖတ်ယူမယ်
+    # Database ထဲမှ အရင်ပြောထားသော History ကို ဆွဲထုတ်ခြင်း
     user_data = history_collection.find_one({"user_id": user_id})
-    history = user_data['history'] if user_data else []
+    raw_history = user_data['history'] if user_data else []
 
     try:
         # Gemini Chat Session ကို History အဟောင်းဖြင့် စတင်ခြင်း
-        chat_session = model.start_chat(history=history)
+        chat_session = model.start_chat(history=raw_history)
         
-        # Gemini ဆီက အဖြေတောင်းခြင်း
+        # အဖြေတောင်းခြင်း
         response = chat_session.send_message(message.text)
         
         if response.text:
-            # အဖြေရလျှင် History အသစ်ကို Database ထဲမှာ Update လုပ်မယ်
-            new_history = chat_session.history
+            # History အသစ်ကို Database တွင် သိမ်းဆည်းရန် Format ပြင်ခြင်း
+            updated_history = []
+            for content in chat_session.history:
+                updated_history.append({
+                    "role": content.role,
+                    "parts": [{"text": part.text} for part in content.parts]
+                })
             
-            # နောက်ဆုံး စာကြောင်း ၃၀ ပဲ သိမ်းမယ်
-            if len(new_history) > 30:
-                new_history = new_history[-30:]
+            # Memory အရမ်းမများစေရန် နောက်ဆုံး စာကြောင်း ၄၀ ခန့်သာ သိမ်းမည်
+            if len(updated_history) > 40:
+                updated_history = updated_history[-40:]
                 
+            # Database တွင် Update လုပ်ခြင်း
             history_collection.update_one(
                 {"user_id": user_id},
-                {"$set": {"history": new_history}},
+                {"$set": {"history": updated_history}},
                 upsert=True
             )
             
             bot.reply_to(message, response.text)
-        else:
-            bot.reply_to(message, "Gemini က အဖြေမထုတ်ပေးနိုင်ပါဘူးခင်ဗျာ။")
             
     except Exception as e:
         error_str = str(e)
         if "429" in error_str:
-            bot.reply_to(message, "Quota ပြည့်သွားပါပြီ။ ၁ မိနစ်လောက်နေမှ ပြန်မေးပေးပါခင်ဗျာ။")
+            bot.reply_to(message, "ခဏလေးစောင့်ပေးပါ၊ လူများနေလို့ပါ။")
         else:
-            bot.reply_to(message, f"Error တက်နေပါတယ်ခင်ဗျာ:\n{error_str}")
+            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက် - {error_str}")
 
 # 4. Bot ကို စတင် Run ခြင်း
 def start_bot():
     Thread(target=run).start()
-    print("Bot is starting with Gemini 2.5 Flash and Memory...")
     bot.polling(non_stop=True)
 
 if __name__ == "__main__":
