@@ -5,9 +5,10 @@ from flask import Flask
 from threading import Thread
 from pymongo import MongoClient
 
+# Web Server for Render
 app = Flask('')
 @app.route('/')
-def home(): return "Lawkanat Bot is Running!"
+def home(): return "Lawkanat Bot is Online!"
 
 def run(): app.run(host='0.0.0.0', port=8080)
 
@@ -18,8 +19,8 @@ MONGO_URI = os.environ.get('MONGO_URI')
 
 genai.configure(api_key=GEMINI_KEY)
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash', # Quota ပိုများသော 1.5-flash ကို သုံးရန် အကြံပြုပါသည်
-    system_instruction="You are Lawkanat Bot. Keep answers concise to save quota. Remember user context."
+    model_name='gemini-1.5-flash',
+    system_instruction="You are Lawkanat Bot. Keep answers concise. Remember user context."
 )
 
 client = MongoClient(MONGO_URI)
@@ -46,7 +47,7 @@ def chat(message):
                     "parts": [{"text": part.text} for part in content.parts]
                 })
             
-            # --- Quota ချွေတာရန် History ကို ၁၀ ကြောင်းသာ သိမ်းမည် ---
+            # Quota ချွေတာရန် History ကို ၁၀ ကြောင်းသာ သိမ်းမည်
             if len(updated_history) > 10:
                 updated_history = updated_history[-10:]
                 
@@ -57,20 +58,23 @@ def chat(message):
             )
             bot.reply_to(message, response.text)
             
-except Exception as e:
+    except Exception as e:
         error_msg = str(e)
         if "429" in error_msg:
-            bot.reply_to(message, "Gemini API Limit ပြည့်သွားပါပြီ။ ခဏနားပြီးမှ ပြန်မေးပေးပါ။")
-        elif "409" in error_msg:
-            # ဒီနေရာမှာ Conflict ဖြစ်ရင် ဘာမှပြန်မလုပ်ဘဲ ကျော်သွားခိုင်းတာက ပိုငြိမ်ပါတယ်
-            print("Conflict Error: Multiple instances running.")
+            bot.reply_to(message, "API Limit ပြည့်သွားပါပြီ။ ခဏနားပြီးမှ ပြန်မေးပေးပါ။")
+        elif "Conflict" in error_msg:
+            print("Multiple instances running. Please wait.")
         else:
-            # တခြား Error ဆိုရင် ဘာ Error လဲဆိုတာ Telegram မှာ တိုက်ရိုက်ပြခိုင်းပါ
-            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက်- {error_msg[:100]}")
+            bot.reply_to(message, "ခဏလေးစောင့်ပေးပါ၊ လူများနေလို့ပါ။")
 
 def start_bot():
+    # Web server and Bot polling
     Thread(target=run).start()
-    bot.polling(non_stop=True)
+    print("Bot is starting...")
+    try:
+        bot.polling(non_stop=True)
+    except Exception as e:
+        print(f"Polling error: {e}")
 
 if __name__ == "__main__":
     start_bot()
