@@ -16,8 +16,10 @@ GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
 MONGO_URI = os.environ.get('MONGO_URI')
 
 genai.configure(api_key=GEMINI_KEY)
+
+# ဒီနေရာမှာ models/ ဆိုတာလေး ထည့်ပေးထားပါတယ်
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
+    model_name='models/gemini-1.5-flash',
     system_instruction="You are Lawkanat Bot. Answer in Burmese. Keep it short."
 )
 
@@ -34,12 +36,10 @@ def chat(message):
     raw_history = user_data['history'] if user_data else []
 
     try:
-        # Gemini Chat စတင်ခြင်း
         chat_session = model.start_chat(history=raw_history)
         response = chat_session.send_message(message.text)
         
         if response.text:
-            # History ကို Database သိမ်းရန် Format ပြင်ခြင်း
             updated_history = []
             for content in chat_session.history:
                 updated_history.append({
@@ -47,7 +47,6 @@ def chat(message):
                     "parts": [{"text": part.text} for part in content.parts]
                 })
             
-            # Quota သက်သာရန် နောက်ဆုံး ၆ ကြောင်း (၃ စုံ) သာ သိမ်းမည်
             if len(updated_history) > 6:
                 updated_history = updated_history[-6:]
                 
@@ -61,10 +60,9 @@ def chat(message):
     except Exception as e:
         error_str = str(e)
         if "429" in error_str:
-            bot.reply_to(message, "API Limit ပြည့်သွားပါပြီ။ ၁ နာရီလောက်နားပြီးမှ ပြန်မေးပေးပါ။")
+            bot.reply_to(message, "API Limit ပြည့်သွားပါပြီ။ ခဏနားပြီးမှ ပြန်မေးပေးပါ။")
         else:
-            # Error အစစ်အမှန်ကို Telegram မှာ ပြခိုင်းခြင်း
-            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက်တက်နေသည်- {error_str[:150]}")
+            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက်- {error_str[:150]}")
 
 def start_bot():
     Thread(target=run).start()
