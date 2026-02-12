@@ -57,11 +57,16 @@ def chat(message):
             )
             bot.reply_to(message, response.text)
             
-    except Exception as e:
-        if "429" in str(e):
-            bot.reply_to(message, "API Limit ပြည့်သွားပါပြီ။ ၁ မိနစ်လောက်နေမှ ပြန်မေးပေးပါခင်ဗျာ။")
+except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg:
+            bot.reply_to(message, "Gemini API Limit ပြည့်သွားပါပြီ။ ခဏနားပြီးမှ ပြန်မေးပေးပါ။")
+        elif "409" in error_msg:
+            # ဒီနေရာမှာ Conflict ဖြစ်ရင် ဘာမှပြန်မလုပ်ဘဲ ကျော်သွားခိုင်းတာက ပိုငြိမ်ပါတယ်
+            print("Conflict Error: Multiple instances running.")
         else:
-            bot.reply_to(message, "ခဏလေးစောင့်ပေးပါ၊ လူများနေလို့ပါ။")
+            # တခြား Error ဆိုရင် ဘာ Error လဲဆိုတာ Telegram မှာ တိုက်ရိုက်ပြခိုင်းပါ
+            bot.reply_to(message, f"စနစ်ချို့ယွင်းချက်- {error_msg[:100]}")
 
 def start_bot():
     Thread(target=run).start()
