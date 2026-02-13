@@ -1,5 +1,3 @@
 pyTelegramBotAPI
 google-generativeai>=0.9.0
 flask
-pymongo
-dnspython
